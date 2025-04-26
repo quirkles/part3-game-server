@@ -1,35 +1,52 @@
-import {Round} from "./Rounds/Round";
-import {nanoid} from "nanoid";
+import { Logger } from "winston";
 
-import {EventEmitter, type Event} from "../utils/EventEmitter";
+import { EventEmitter } from "../utils/EventEmitter";
+
+import { Round } from "./Rounds/Round";
 
 const GameStatus = {
-    NOT_STARTED: "NOT_STARTED",
-    IN_PROGRESS: "IN_PROGRESS",
-    FINISHED: "FINISHED",
-    CANCELLED: "CANCELLED"
-} as const
+  NOT_STARTED: "NOT_STARTED",
+  IN_PROGRESS: "IN_PROGRESS",
+  FINISHED: "FINISHED",
+  CANCELLED: "CANCELLED",
+} as const;
 
-type GameStatus = keyof typeof GameStatus
+type GameStatus = keyof typeof GameStatus;
 
-interface GameEvents extends Event {
+type GameEvents = {
+  playerJoined: [userId: string];
+  playerLeft: [userId: string];
+};
 
-}
+export class Game extends EventEmitter<GameEvents> {
+  private readonly id: string;
+  private createdBy: string;
+  private rounds: Round[] = [];
+  private status: GameStatus = GameStatus.NOT_STARTED;
+  private players: string[] = [];
 
-export class Game extends EventEmitter<GameEvents>{
-    private readonly id: string;
-    private createdAt: Date = new Date();
-    private createdBy: string;
-    private rounds: Round[] = [];
-    private status: GameStatus = GameStatus.NOT_STARTED;
+  constructor(
+    params: {
+      id: string;
+      name: string;
+      createdBy: string;
+      status: "NOT_STARTED" | "IN_PROGRESS" | "FINISHED" | "CANCELLED";
+    },
+    logger: Logger,
+  ) {
+    super(logger);
+    this.id = params.id;
+    this.createdBy = params.createdBy;
+    this.status = params.status;
+  }
 
-    constructor(createdBy: string) {
-        super();
-        this.id = nanoid();
-        this.createdBy = createdBy;
-    }
+  removeUser(userId: string) {
+    this.players = this.players.filter((p) => p !== userId);
+    this.emit("playerLeft", userId);
+  }
 
-    get Id() {
-        return this.id;
-    }
+  addUser(userId: string) {
+    this.players.push(userId);
+    this.emit("playerJoined", userId);
+  }
 }

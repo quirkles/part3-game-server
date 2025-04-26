@@ -7,7 +7,7 @@ import { createLogger, type Logger, transports, format } from "winston";
 import Transport from "winston-transport";
 import { WebSocketServer } from "ws";
 
-import { findGameById } from "./firestore/games";
+import { GamePool } from "./Models/GamePool";
 import { ConnectionTokenManager } from "./utils/ConnectionTokenManager";
 import { createToken } from "./utils/createToken";
 import { getConfig } from "./utils/getConfig";
@@ -41,6 +41,7 @@ async function main() {
     transports: ts,
   });
 
+  const appGamePool = new GamePool(appLogger);
   const connectionTokenManager = new ConnectionTokenManager(appLogger);
 
   const server = createServer();
@@ -172,7 +173,7 @@ async function main() {
         decodedToken,
       });
 
-      const game = await findGameById(gameId);
+      const game = await appGamePool.getGameById(gameId);
 
       if (!game) {
         req.logger.warn("Game not found:");
@@ -189,6 +190,8 @@ async function main() {
       req.logger.info("Game found:", {
         game,
       });
+
+      appGamePool.addUserToGame(decodedToken.userId, gameId);
 
       ws.on("error", console.error);
 

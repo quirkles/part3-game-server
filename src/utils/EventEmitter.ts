@@ -1,25 +1,44 @@
-export interface Event {
-    [key: string]: (...args: unknown[]) => void;
-}
+import { Logger } from "winston";
 
-export class EventEmitter<T extends Event> {
-    private readonly handlers: { [eventName in keyof T]?: ((value: T[eventName]) => void)[] } = {}
+type EventName = string;
 
-    constructor() {}
+export type EventHandlerArgsMap = Record<EventName, readonly unknown[]>;
 
-    emit<K extends keyof T>(event: K, value: T[K]): void {
-        this.handlers[event]?.forEach(h => h(value));
+export class EventEmitter<
+  Events extends EventHandlerArgsMap,
+  EventName extends keyof Events & string = keyof Events & string,
+> {
+  private readonly handlers: {
+    [E in keyof Events]?: ((...args: Events[E]) => void)[];
+  } = {};
+
+  constructor(protected readonly logger: Logger) {}
+
+  emit(
+    ...[event, ...values]: EventName extends keyof Events
+      ? [EventName, ...Events[EventName]]
+      : never
+  ): void {
+    this.logger.debug(`EventEmitter.${this.constructor.name}.emit`, {
+      event,
+      values,
+    });
+    this.handlers[event]?.forEach((h) => h(...values));
+  }
+
+  on(
+    ...[event, handler]: EventName extends keyof Events
+      ? [EventName, (...args: Events[EventName]) => void]
+      : never
+  ): () => void {
+    if (!this.handlers[event]) {
+      this.handlers[event] = [handler];
+    } else {
+      this.handlers[event].push(handler);
     }
-
-    on<K extends keyof T>(event: K, handler: (value: T[K]) => void): () => void  {
-        if(!this.handlers[event]) {
-            this.handlers[event] = [handler];
-        } else {
-            this.handlers[event].push(handler);
-        }
-        return () => {
-            this.handlers[event] = this.handlers[event]?.filter(h => h !== handler);
-        };
-
-    }
+    // Return the unsubscribe
+    return () => {
+      this.handlers[event] = this.handlers[event]?.filter((h) => h !== handler);
+    };
+  }
 }

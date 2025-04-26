@@ -1,8 +1,8 @@
 import {nanoid} from "nanoid";
 
-import {EventEmitter, type Event} from "../../utils/EventEmitter"
+import {EventEmitter, type EventHandlerMap} from "../../utils/EventEmitter"
 
-interface RoundEvents extends Event {
+interface RoundEvents extends EventHandlerMap {
     roundStart: () => void
 }
 
