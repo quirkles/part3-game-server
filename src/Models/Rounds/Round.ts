@@ -1,25 +1,37 @@
-import {nanoid} from "nanoid";
+import { nanoid } from "nanoid";
+import { Logger } from "winston";
 
-import {EventEmitter, type EventHandlerMap} from "../../utils/EventEmitter"
+import { EventEmitter } from "../EventEmitter";
 
-interface RoundEvents extends EventHandlerMap {
-    roundStart: () => void
-}
+type RoundEvents = {
+  roundStart: [];
+};
 
+export class Round extends EventEmitter<RoundEvents> {
+  private readonly _id: string;
+  private team1Users: string[];
+  private team2Users: string[];
 
-export class Round extends EventEmitter<RoundEvents>{
-    private readonly id: string
-    private team1Users: string[]
-    private team2Users: string[]
+  constructor(team1Users: string[], team2Users: string[], logger: Logger) {
+    super(logger);
+    this.team1Users = team1Users;
+    this.team2Users = team2Users;
+    this._id = nanoid();
+  }
 
-    constructor(team1Users: string[], team2Users: string[]) {
-        super();
-        this.team1Users = team1Users;
-        this.team2Users = team2Users;
-        this.id = nanoid();
-    }
+  get id() {
+    return this._id;
+  }
 
-    get Id() {
-        return this.id;
-    }
+  modelDump(): {
+    id: string;
+    team1Users: string[];
+    team2Users: string[];
+  } {
+    return {
+      id: this.id,
+      team1Users: this.team1Users,
+      team2Users: this.team2Users,
+    };
+  }
 }
