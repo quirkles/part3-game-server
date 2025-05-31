@@ -14,7 +14,9 @@ export class ConnectionTokenManager {
     }, this.tokenExpirationTime);
   }
 
-  async verify(token: string): Promise<{ userId: string } | null> {
+  async verify(
+    token: string,
+  ): Promise<{ userId: string; isDevToken: boolean } | null> {
     if (this.tokens.has(token)) {
       const payload = await verifyToken(token).catch((e) => {
         this.logger.error("Error verifying token", e);
@@ -29,7 +31,7 @@ export class ConnectionTokenManager {
         return null;
       }
       this.tokens.delete(token);
-      return { userId: payload.id };
+      return { userId: payload.id, isDevToken: payload.isDevToken };
     }
     return null;
   }

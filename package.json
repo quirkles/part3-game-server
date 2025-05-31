@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon src/main.ts",
+    "dev": ". ./loadEnv.sh && nodemon src/main.ts",
     "test": "jest"
   },
   "keywords": [],
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@faker-js/faker": "^9.8.0",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/ws": "^8.18.1",
     "eslint": "^9.25.0",

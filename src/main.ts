@@ -22,6 +22,7 @@ import { ecsFormat } from "@elastic/ecs-winston-format";
 import { join } from "path";
 import { esFormatter } from "./utils/winston/es/elasticsearchTemplate";
 import { Transaction } from "elastic-apm-node";
+import { getUserById } from "./firestore/user";
 
 const { combine, prettyPrint, colorize, printf } = format;
 
@@ -138,6 +139,7 @@ async function main() {
         apmClient.setTransactionName("Request:getToken");
         const urlParams = new URLSearchParams(req.url.split("?")[1] || "");
         const userId = urlParams.get("userId");
+        const isDevToken = urlParams.get("isDevToken") === "true";
         req.logger.info("GetUserRequest: Parsed userid", {
           userId,
         });
@@ -149,7 +151,11 @@ async function main() {
           return;
         }
         const codeVerifier = nanoid();
-        const token = await createToken({ id: userId, codeVerifier });
+        const token = await createToken({
+          id: userId,
+          codeVerifier,
+          isDevToken,
+        });
 
         connectionTokenManager.addToken(token, codeVerifier);
         res.writeHead(200, {
@@ -227,9 +233,33 @@ async function main() {
         return;
       }
 
+      if (decodedToken.isDevToken) {
+        const user = await getUserById(decodedToken.userId);
+        if (!user || !user.hasDevPermissions) {
+          connectionLogger.warn("User does not have dev permissions", {
+            decodedToken,
+          });
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              error: "user does not have dev permissions",
+            }),
+          );
+          connectionTransaction.end();
+          ws.close();
+          return;
+        }
+        ws.send(
+          JSON.stringify({
+            type: "dev connectionTokenVerified",
+          }),
+        );
+      }
+
       connectionTransaction.addLabels({
         connectionToken: "valid",
         userId: decodedToken.userId,
+        isDevToken: decodedToken.isDevToken,
       });
 
       if (!gameId) {
@@ -278,7 +308,13 @@ async function main() {
         game,
       });
 
-      appGamePool.addUserToGame(decodedToken.userId, gameId);
+      if (decodedToken.isDevToken) {
+        connectionLogger.info("Dev connection created", {
+          decodedToken,
+        });
+      } else {
+        appGamePool.addUserToGame(decodedToken.userId, gameId);
+      }
 
       ws.on("error", connectionLogger.error);
 
