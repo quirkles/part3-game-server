@@ -1,28 +1,27 @@
-/* eslint-disable import/order */
+// eslint-disable-next-line import/order
 import { apmClient } from "./utils/winston/es/apm";
-// Needs to be the first thing imported by main
 
 import { createServer, IncomingMessage } from "http";
+import { join } from "path";
 
+import { ecsFormat } from "@elastic/ecs-winston-format";
 import { LoggingWinston } from "@google-cloud/logging-winston";
 
+import { Transaction } from "elastic-apm-node";
 import { nanoid } from "nanoid";
 import { createLogger, type Logger, transports, format } from "winston";
 import Transport from "winston-transport";
-import { WebSocketServer } from "ws";
+import { RawData, WebSocketServer } from "ws";
 
+import { getUserById } from "./firestore/user";
 import { GamePool } from "./Models/GamePool";
 import { ConnectionTokenManager } from "./utils/ConnectionTokenManager";
 import { createToken } from "./utils/createToken";
 import { getConfig } from "./utils/getConfig";
 import { serialize } from "./utils/serialize";
+import { esFormatter } from "./utils/winston/es/elasticsearchTemplate";
 import { baseFormat } from "./utils/winston/formats/baseFormat";
 import { recursivelyRemoveFields } from "./utils/winston/formats/recursivelyStripFields";
-import { ecsFormat } from "@elastic/ecs-winston-format";
-import { join } from "path";
-import { esFormatter } from "./utils/winston/es/elasticsearchTemplate";
-import { Transaction } from "elastic-apm-node";
-import { getUserById } from "./firestore/user";
 
 const { combine, prettyPrint, colorize, printf } = format;
 
@@ -305,7 +304,7 @@ async function main() {
       );
 
       connectionLogger.info("Game found", {
-        game,
+        game: game.modelDump(),
       });
 
       if (decodedToken.isDevToken) {
@@ -318,8 +317,20 @@ async function main() {
 
       ws.on("error", connectionLogger.error);
 
-      ws.on("message", function message(data) {
-        connectionLogger.info("message recieved", data);
+      ws.on("message", function message(raw) {
+        let data: RawData | string | object = raw;
+        try {
+          data = String(data);
+          data = JSON.parse(data);
+        } catch (err) {
+          connectionLogger.error("Error parsing message", {
+            err,
+            data,
+          });
+          return;
+        }
+
+        connectionLogger.info("message received", { message: data });
       });
 
       ws.on("close", function close() {
@@ -334,17 +345,6 @@ async function main() {
         });
         connectionTransaction.end();
       });
-
-      while (ws.readyState === ws.OPEN) {
-        connectionLogger.info("Connection tick", {
-          game: game.modelDump(),
-          ws: {
-            userId: decodedToken.userId,
-            readyState: ws.readyState,
-          },
-        });
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-      }
     },
   );
 

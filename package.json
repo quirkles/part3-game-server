@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "dev": ". ./loadEnv.sh && nodemon src/main.ts",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@faker-js/faker": "^9.8.0",
+    "@jest/globals": "^30.0.0-beta.3",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/ws": "^8.18.1",
     "eslint": "^9.25.0",

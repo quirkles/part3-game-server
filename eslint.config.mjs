@@ -1,20 +1,10 @@
-import js from "@eslint/js";
-
-import { defineConfig } from "eslint/config";
 import importPlugin from "eslint-plugin-import";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
-import globals from "globals";
 import { configs } from "typescript-eslint";
 
-export default defineConfig([
+const eslintConfig = [
   {
-    files: ["**/*.{js,mjs,cjs,ts}"],
-    plugins: { js },
-    extends: ["js/recommended"],
-  },
-  {
-    files: ["**/*.{js,mjs,cjs,ts}"],
-    languageOptions: { globals: globals.browser },
+    ignores: ["**/dist"],
   },
   {
     settings: {
@@ -27,7 +17,8 @@ export default defineConfig([
       },
     },
   },
-  configs.recommended,
+  ...configs.recommended,
+  eslintPluginPrettierRecommended,
   importPlugin.flatConfigs.typescript,
   importPlugin.flatConfigs.recommended,
   {
@@ -62,5 +53,20 @@ export default defineConfig([
       ],
     },
   },
-  eslintPluginPrettierRecommended,
-]);
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
+  },
+];
+
+export default eslintConfig;
